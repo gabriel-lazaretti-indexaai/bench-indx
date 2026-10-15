@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f1efe9">
+    <title>Indexa / Runtime Bench</title>
+    <link rel="stylesheet" href="/app.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Indexa Runtime Bench, início">
+        <span class="brand-mark">IB</span>
+        <span>Indexa <i>/</i> runtime bench</span>
+      </a>
+      <div class="connection" id="connection" role="status" aria-live="polite">
+        <span class="connection-dot"></span>
+        <span id="connection-label">Conectando ao runner</span>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="hero" aria-labelledby="page-title">
+        <div class="hero-copy">
+          <p class="kicker">Laboratório local <span> / </span> PostgreSQL + Redis Streams</p>
+          <h1 id="page-title">Mesma carga.<br><span>Três runtimes.</span></h1>
+          <p class="hero-description">Dispare um fluxo e acompanhe Node.js + NestJS, .NET e Go em sequência, com a mesma carga e o mesmo estado inicial.</p>
+        </div>
+        <div class="runtime-list" aria-label="Runtimes comparados">
+          <div class="runtime-entry runtime-node"><span class="runtime-pin"></span><span>Node.js</span><small>NestJS 11</small></div>
+          <div class="runtime-entry runtime-dotnet"><span class="runtime-pin"></span><span>.NET</span><small>ASP.NET Core</small></div>
+          <div class="runtime-entry runtime-go"><span class="runtime-pin"></span><span>Go</span><small>net/http</small></div>
+          <div class="hero-foot">Um processo por vez <b>·</b> resultados persistidos localmente</div>
+        </div>
+      </section>
+
+      <section class="control-section" aria-labelledby="run-heading">
+        <div class="section-heading">
+          <div>
+            <p class="section-index">Escolha a carga</p>
+            <h2 id="run-heading">Qual fluxo você quer comparar?</h2>
+          </div>
+          <div class="profile-picker" role="group" aria-label="Perfil de carga">
+            <button type="button" class="profile-option" data-profile="quick" aria-pressed="false">Rápido <small>20 VUs · 60 s</small></button>
+            <button type="button" class="profile-option is-selected" data-profile="stress" aria-pressed="true">Estresse <small>até 100 VUs</small></button>
+          </div>
+        </div>
+
+        <div class="flow-actions">
+          <button type="button" class="flow-action action-approval" data-flow="approval">
+            <span class="flow-number">01</span>
+            <span class="flow-name">Aprovação</span>
+            <span class="flow-detail">Publicação simulada · 100 itens por job</span>
+            <span class="flow-cta">Comparar runtimes <b>↗</b></span>
+          </button>
+          <button type="button" class="flow-action action-enrichment" data-flow="enrichment">
+            <span class="flow-number">02</span>
+            <span class="flow-name">Enriquecimento</span>
+            <span class="flow-detail">Transformação local · sem chamada de IA</span>
+            <span class="flow-cta">Comparar runtimes <b>↗</b></span>
+          </button>
+          <button type="button" class="flow-action action-sync" data-flow="synchronization">
+            <span class="flow-number">03</span>
+            <span class="flow-name">Sincronização</span>
+            <span class="flow-detail">Upsert de catálogo · páginas sintéticas</span>
+            <span class="flow-cta">Comparar runtimes <b>↗</b></span>
+          </button>
+        </div>
+
+        <button type="button" id="run-all" class="run-all">
+          <span><strong>Rodar matriz completa</strong><small>9 comparações, um fluxo por vez</small></span>
+          <span class="run-all-arrow" aria-hidden="true">↗</span>
+        </button>
+        <p class="run-note">Cada comparação executa os três runtimes em série e limpa os dados entre execuções. O perfil de estresse leva cerca de 5 a 7 minutos por fluxo, além da preparação inicial das imagens.</p>
+        <p class="action-message" id="action-message" role="alert" hidden></p>
+      </section>
+
+      <section class="run-status" id="run-status" aria-live="polite" aria-labelledby="status-heading">
+        <div class="status-main">
+          <div class="status-heading-line">
+            <div>
+              <p class="section-index">Execução</p>
+              <h2 id="status-heading">Aguardando uma comparação</h2>
+            </div>
+            <span class="run-counter" id="run-counter">-- / --</span>
+          </div>
+          <div class="progress-track" aria-label="Progresso da comparação">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="status-detail">
+            <span id="stage-label">Os resultados anteriores estão carregados abaixo.</span>
+            <span id="current-label">Runner local</span>
+          </div>
+        </div>
+        <div class="status-side">
+          <span class="status-pulse" id="status-pulse"></span>
+          <span id="status-label">Pronto</span>
+        </div>
+      </section>
+
+      <section class="results-section" aria-labelledby="results-heading">
+        <div class="results-heading">
+          <div>
+            <p class="section-index">Telemetria</p>
+            <h2 id="results-heading">Comparação por fluxo</h2>
+            <p class="results-caption" id="results-caption">Últimos resultados salvos para o perfil de estresse. Barras atualizadas ao fim de cada runtime.</p>
+          </div>
+          <div class="metric-toggle" role="group" aria-label="Métrica do gráfico">
+            <button type="button" data-metric="jobsPerSecond" class="metric-option is-selected" aria-pressed="true">Jobs/s</button>
+            <button type="button" data-metric="completionP95Ms" class="metric-option" aria-pressed="false">Job p95</button>
+          </div>
+        </div>
+
+        <div class="visual-grid">
+          <div class="chart-panel">
+            <div class="chart-axis-labels"><span id="chart-unit">jobs concluídos / segundo</span><span id="chart-scale">escala: 0–30</span></div>
+            <div class="chart" id="chart" aria-live="polite"></div>
+            <div class="chart-legend" aria-label="Legenda dos runtimes">
+              <span><i class="legend-node"></i>Node.js + NestJS</span>
+              <span><i class="legend-dotnet"></i>.NET</span>
+              <span><i class="legend-go"></i>Go</span>
+            </div>
+          </div>
+          <aside class="event-panel" aria-labelledby="event-heading">
+            <div class="event-heading"><h3 id="event-heading">Eventos do runner</h3><span id="event-count">0</span></div>
+            <div class="event-list" id="event-list" role="log" aria-live="polite" aria-relevant="additions text">
+              <p class="empty-event">O progresso do Docker e do k6 aparecerá aqui.</p>
+            </div>
+          </aside>
+        </div>
+
+        <div class="table-heading">
+          <h3>Métricas por execução</h3>
+          <span id="table-profile">Perfil: estresse</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Fluxo</th><th>Runtime</th><th>Jobs/s</th><th>Job p95</th><th>E2E p95</th><th>CPU máx.</th><th>RAM máx.</th><th>Checks</th></tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+          </table>
+        </div>
+        <p class="table-footnote">Job p95 mede a duração no serviço. E2E p95 inclui enqueue e polling. CPU e memória são os picos amostrados pelo Docker durante o cenário.</p>
+      </section>
+      <footer class="page-footer"><span>Benchmark sintético da Indexa</span><span>Serviços locais · sem chamadas a canais ou modelos externos</span></footer>
+    </main>
+  </body>
+</html>

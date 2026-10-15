@@ -1,0 +1,106 @@
+name: indexa-language-benchmark
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: benchmark
+      POSTGRES_PASSWORD: benchmark
+      POSTGRES_DB: benchmark
+    ports:
+      - "55432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./schema/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U benchmark -d benchmark"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    cpus: 2.0
+    mem_limit: 2g
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "56379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    cpus: 1.0
+    mem_limit: 512m
+
+  app-node:
+    build: ./node
+    environment: &benchmark-env
+      DATABASE_URL: postgres://benchmark:benchmark@postgres:5432/benchmark
+      REDIS_URL: redis://redis:6379
+      PORT: "3000"
+      WORKER_CONCURRENCY: "8"
+      ITEM_CONCURRENCY: "8"
+      PAGE_SIZE: "100"
+      DB_POOL_MAX: "20"
+    ports:
+      - "38001:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    cpus: 2.0
+    mem_limit: 2g
+
+  app-dotnet:
+    build: ./dotnet
+    environment: *benchmark-env
+    ports:
+      - "38002:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    cpus: 2.0
+    mem_limit: 2g
+
+  app-go:
+    build: ./go
+    environment:
+      <<: *benchmark-env
+      HTTP_ADDR: ":3000"
+    ports:
+      - "38003:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    cpus: 2.0
+    mem_limit: 2g
+
+  k6:
+    image: grafana/k6:1.8.2
+    profiles: ["load"]
+    entrypoint: ["k6"]
+    command: ["run", "/scripts/jobs.js"]
+    environment:
+      BASE_URL: ${BASE_URL:-http://app-node:3000}
+      WORKFLOW: ${WORKFLOW:-mixed}
+      PROFILE: ${PROFILE:-stress}
+      ITEM_COUNT: ${ITEM_COUNT:-100}
+      EXTERNAL_LATENCY_MS: ${EXTERNAL_LATENCY_MS:-0}
+      FAILURE_EVERY: ${FAILURE_EVERY:-0}
+      POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-200}
+      RESULTS_TAG: ${RESULTS_TAG:-local}
+    volumes:
+      - ./load:/scripts:ro
+      - ./results:/results
+
+volumes:
+  postgres-data:
+  redis-data:

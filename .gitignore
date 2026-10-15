@@ -1,0 +1,13 @@
+# Local dependencies and generated build output
+node/node_modules/
+node/dist/
+node/*.tsbuildinfo
+go/go
+**/bin/
+**/obj/
+
+# Keep raw k6 captures only in their compressed form
+**/*.raw.json
+
+# One-off local smoke checks from the initial setup
+results/preflight/
